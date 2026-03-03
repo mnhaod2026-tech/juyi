@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>مجمع احمد فرحان المتميز</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+
+    <datalist id="inventory-options"></datalist>
+
+    <header>
+        <h1>مجمع احمد فرحان المتميز</h1>
+    </header>
+
+    <main id="app-content">
+        
+        <section id="tab-inventory" class="tab-content active">
+            <div class="top-actions">
+                <button class="btn-primary" onclick="openModal('modal-add-item')"><i class="fas fa-plus"></i> إضافة منتج</button>
+            </div>
+            <div id="inventory-list" class="list-container">
+            </div>
+        </section>
+
+        <section id="tab-customers" class="tab-content">
+            <div class="top-actions">
+                <input type="text" id="search-customer" placeholder="بحث عن زبون..." onkeyup="searchCustomers()">
+                <button class="btn-primary" onclick="openModal('modal-add-customer')"><i class="fas fa-user-plus"></i> إضافة زبون</button>
+            </div>
+            <div id="customers-list" class="list-container">
+            </div>
+        </section>
+
+        <section id="tab-sales" class="tab-content">
+            <div class="top-actions">
+                <button class="btn-primary" onclick="openDirectSaleModal()"><i class="fas fa-shopping-cart"></i> بيع مباشر</button>
+            </div>
+            <h2 class="section-title">المبيعات المباشرة</h2>
+            <div id="sales-list" class="list-container">
+                <p class="empty-msg">اضغط على بيع مباشر للبدء...</p>
+            </div>
+        </section>
+
+        <section id="tab-statistics" class="tab-content">
+            <h2 class="section-title">إحصائيات الأرباح والمبيعات</h2>
+            <div class="summary-cards" style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px;">
+                <div class="balance-card" style="background: #e74c3c;">مجموع الديون الكلي: <span id="stat-total-debt">0</span> د.ع</div>
+                <div class="balance-card" style="background: #2ecc71;">مبيع نقد الشهري: <span id="stat-monthly-sale">0</span> د.ع</div>
+                <div class="balance-card" style="background: #f39c12;">قيمة المخزون (سعر الشراء): <span id="stat-inv-buy">0</span> د.ع</div>
+                <div class="balance-card" style="background: #3498db;">قيمة المخزون (سعر البيع): <span id="stat-inv-sell">0</span> د.ع</div>
+            </div>
+            <h2 class="section-title">فهرست الأشهر</h2>
+            <div id="statistics-list" class="list-container">
+            </div>
+        </section>
+
+        <section id="tab-notifications" class="tab-content">
+            <h2 class="section-title">التنبيهات (الديون المتأخرة)</h2>
+            <div id="notifications-list" class="list-container">
+                <p class="empty-msg">لا توجد تنبيهات حالياً.</p>
+            </div>
+        </section>
+
+        <section id="tab-settings" class="tab-content">
+            <div class="settings-container">
+                <button class="btn-secondary" onclick="exportData()"><i class="fas fa-download"></i> تنزيل نسخة احتياطية</button>
+                <label class="btn-secondary file-upload">
+                    <i class="fas fa-upload"></i> رفع نسخة احتياطية
+                    <input type="file" id="import-file" accept=".json" onchange="importData(event)" style="display: none;">
+                </label>
+            </div>
+        </section>
+
+    </main>
+
+    <nav class="bottom-nav">
+        <a href="#" class="nav-item active" onclick="switchTab('inventory', this)"><i class="fas fa-boxes"></i><span>المخزون</span></a>
+        <a href="#" class="nav-item" onclick="switchTab('customers', this)"><i class="fas fa-users"></i><span>الزبائن</span></a>
+        <a href="#" class="nav-item" onclick="switchTab('sales', this)"><i class="fas fa-cash-register"></i><span>البيع</span></a>
+        <a href="#" class="nav-item" onclick="switchTab('statistics', this)"><i class="fas fa-chart-line"></i><span>الإحصائيات</span></a>
+        <a href="#" class="nav-item" onclick="switchTab('notifications', this)"><i class="fas fa-bell"></i><span>تنبيهات</span></a>
+        <a href="#" class="nav-item" onclick="switchTab('settings', this)"><i class="fas fa-cog"></i><span>الإعدادات</span></a>
+    </nav>
+
+    <div id="modal-add-item" class="modal">
+        <div class="modal-content">
+            <h3>إضافة/تعديل منتج</h3>
+            <input type="hidden" id="item-id">
+            <input type="text" id="item-name" placeholder="اسم السلعة">
+            <input type="number" id="item-buy-price" placeholder="سعر الشراء (د.ع)">
+            <input type="number" id="item-sell-price" placeholder="سعر البيع (د.ع)">
+            <input type="number" id="item-qty" placeholder="الكمية">
+            <div class="modal-actions">
+                <button class="btn-primary" onclick="saveItem()">حفظ</button>
+                <button class="btn-danger" onclick="closeModal('modal-add-item')">إلغاء</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="modal-item-stats" class="modal">
+        <div class="modal-content">
+            <h3 id="stat-item-name" style="color:var(--primary-color);">اسم المادة</h3>
+            <div class="list-container" style="margin-top: 15px;">
+                <p>السعر الكلي للمشتراء: <strong id="stat-item-buy-total">0</strong> د.ع</p>
+                <p>الربح الكلي المتوقع للبيع: <strong id="stat-item-sell-profit">0</strong> د.ع</p>
+                <p>أرباح المبيعات لهذه المادة: <strong id="stat-item-achieved-profit">0</strong> د.ع</p>
+            </div>
+            <div class="modal-actions">
+                <button class="btn-danger" onclick="closeModal('modal-item-stats')">إغلاق</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="modal-add-customer" class="modal">
+        <div class="modal-content">
+            <h3>إضافة/تعديل زبون</h3>
+            <input type="hidden" id="cust-id">
+            <input type="text" id="cust-name" placeholder="اسم الزبون">
+            <div class="phone-input">
+                <span class="country-code">+964</span>
+                <input type="number" id="cust-phone" placeholder="7..." style="width: 100%;">
+            </div>
+            <input type="text" id="cust-address" placeholder="العنوان">
+            <input type="number" id="cust-days" placeholder="عدد الأيام المسموح بها للسداد (مثال: 30)">
+            <div class="modal-actions">
+                <button class="btn-primary" onclick="saveCustomer()">حفظ</button>
+                <button class="btn-danger" onclick="closeModal('modal-add-customer')">إلغاء</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="modal-customer-details" class="modal full-modal">
+        <div class="modal-content full-content">
+            <div class="top-actions">
+                <button class="btn-danger" onclick="closeModal('modal-customer-details')"><i class="fas fa-arrow-right"></i> رجوع</button>
+            </div>
+            <h3 id="detail-cust-name">اسم الزبون</h3>
+            <div class="balance-card">الباقي الكلي: <span id="detail-cust-balance">0</span> د.ع</div>
+            
+            <div class="action-buttons">
+                <button class="btn-primary" onclick="openDebtModal()">دين جديد <i class="fas fa-plus-circle"></i></button>
+                <button class="btn-success" onclick="openPaymentModal()">تسديد واصل <i class="fas fa-hand-holding-usd"></i></button>
+            </div>
+
+            <h4 style="margin-top: 25px; text-align: right; border-bottom: 2px solid #ccc; padding-bottom: 5px;">سجل المعاملات:</h4>
+            <div id="customer-transactions-list" class="list-container" style="margin-top: 10px; overflow-y: auto;">
+            </div>
+        </div>
+    </div>
+
+    <div id="modal-debt" class="modal">
+        <div class="modal-content">
+            <h3>إضافة دين جديد</h3>
+            <div id="debt-items-container">
+            </div>
+            <button class="btn-secondary" onclick="addItemRow('debt-items-container')" style="margin-top: 10px;">+ إضافة مادة</button>
+            <input type="date" id="debt-date" readonly style="margin-top: 10px;">
+            <div class="modal-actions">
+                <button class="btn-primary" onclick="saveDebt()">حفظ</button>
+                <button class="btn-danger" onclick="closeModal('modal-debt')">إلغاء</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="modal-payment" class="modal">
+        <div class="modal-content">
+            <h3>تسديد دفعة (واصل)</h3>
+            <div class="balance-card">الباقي الحالي: <span id="payment-current-balance"></span> د.ع</div>
+            <input type="number" id="payment-amount" placeholder="المبلغ المراد تسديده (د.ع)">
+            <input type="text" id="payment-note" placeholder="ملاحظة (اختياري)">
+            <div class="modal-actions">
+                <button class="btn-success" onclick="savePayment()">حفظ</button>
+                <button class="btn-danger" onclick="closeModal('modal-payment')">إلغاء</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="modal-direct-sale" class="modal full-modal">
+        <div class="modal-content full-content">
+            <div class="top-actions">
+                <button class="btn-danger" onclick="closeModal('modal-direct-sale')"><i class="fas fa-arrow-right"></i> رجوع</button>
+            </div>
+            <h3>بيع مباشر (نقد)</h3>
+            <input type="text" id="sale-name" placeholder="اسم الشخص">
+            <div class="phone-input">
+                <span class="country-code">+964</span>
+                <input type="number" id="sale-phone" placeholder="7..." style="width: 100%;">
+            </div>
+            
+            <div id="sale-items-container">
+            </div>
+            <button class="btn-secondary" onclick="addItemRow('sale-items-container')" style="margin-top: 10px;">+ إضافة مادة</button>
+            
+            <div class="balance-card" style="margin-top: 15px;">الناتج الكلي: <span id="sale-total">0</span> د.ع</div>
+            
+            <div class="modal-actions">
+                <button class="btn-primary" onclick="saveDirectSale()">حفظ الفاتورة</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="login-modal" class="modal" style="display: flex; background: var(--bg-color); z-index: 9999;">
+        <div class="modal-content" style="text-align: center; box-shadow: 0 4px 15px rgba(0,0,0,0.2);">
+            <h2 style="margin-bottom: 20px; color: var(--primary-color);">تسجيل الدخول</h2>
+            <div id="google-login-section">
+                <button class="btn-primary" onclick="window.signInWithGoogle()" style="width: 100%; margin-bottom: 10px;">
+                    <i class="fab fa-google"></i> تسجيل الدخول بواسطة جوجل
+                </button>
+            </div>
+            <div id="pin-section" style="display: none;">
+                <input type="password" id="pin-input" placeholder="الرمز السري" style="text-align: center; letter-spacing: 5px; font-size: 1.2rem;">
+                <button class="btn-success" onclick="window.verifyPin()" style="width: 100%; margin-top: 10px;">دخول</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="install-modal" class="modal">
+        <div class="modal-content" style="text-align: center;">
+            <h3 style="margin-bottom: 15px;">تثبيت التطبيق</h3>
+            <p style="margin-bottom: 20px;">هل تريد تثبيت تطبيق "سجل العام" للعمل بدون إنترنت؟</p>
+            <div class="modal-actions">
+                <button class="btn-success" onclick="window.installApp()">تثبيت</button>
+                <button class="btn-danger" onclick="closeModal('install-modal')">لاحقاً</button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-app.js";
+        import { getAuth, signInWithPopup, onAuthStateChanged, GoogleAuthProvider } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-auth.js";
+        import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyAXZDaCDWOU3ZH_5os7KIALvzm9BLyJTVM",
+            authDomain: "rtrl-46c32.firebaseapp.com",
+            projectId: "rtrl-46c32",
+            storageBucket: "rtrl-46c32.firebasestorage.app",
+            messagingSenderId: "821990404266",
+            appId: "1:821990404266:web:c35c3e3ea6c2cf088560d3"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const provider = new GoogleAuthProvider();
+        const db = getFirestore(app);
+
+        window.syncDataToFirebase = async () => {
+            if(navigator.onLine) {
+                try {
+                    const dataToSync = {
+                        inventory: JSON.parse(localStorage.getItem('inventory')) || [],
+                        customers: JSON.parse(localStorage.getItem('customers')) || [],
+                        directSales: JSON.parse(localStorage.getItem('directSales')) || [],
+                        statistics: JSON.parse(localStorage.getItem('statistics')) || []
+                    };
+                    await setDoc(doc(db, "appData", "main"), dataToSync);
+                } catch(e) { console.error("Error syncing:", e); }
+            }
+        };
+
+        window.syncDataFromFirebase = async () => {
+            if(navigator.onLine) {
+                try {
+                    const docSnap = await getDoc(doc(db, "appData", "main"));
+                    if (docSnap.exists()) {
+                        const data = docSnap.data();
+                        if(data.inventory && data.inventory.length > 0) localStorage.setItem('inventory', JSON.stringify(data.inventory));
+                        if(data.customers && data.customers.length > 0) localStorage.setItem('customers', JSON.stringify(data.customers));
+                        if(data.directSales && data.directSales.length > 0) localStorage.setItem('directSales', JSON.stringify(data.directSales));
+                        if(data.statistics && data.statistics.length > 0) localStorage.setItem('statistics', JSON.stringify(data.statistics));
+                        window.location.reload();
+                    }
+                } catch(e) { console.error("Error fetching:", e); }
+            }
+        };
+
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                document.getElementById('google-login-section').style.display = 'none';
+                document.getElementById('pin-section').style.display = 'block';
+            }
+        });
+
+        window.signInWithGoogle = () => {
+            signInWithPopup(auth, provider).then((result) => {
+                console.log("تم تسجيل الدخول بنجاح");
+            }).catch((error) => {
+                alert("خطأ في تسجيل الدخول: " + error.message);
+            });
+        };
+
+        window.verifyPin = () => {
+            const pin = document.getElementById('pin-input').value;
+            if (pin === "1001") {
+                localStorage.setItem('isLoggedIn', 'true');
+                document.getElementById('login-modal').style.display = 'none';
+                
+                if(!localStorage.getItem('inventory') && navigator.onLine) {
+                    window.syncDataFromFirebase();
+                } else {
+                    window.syncDataToFirebase();
+                }
+
+                if (window.deferredPrompt) {
+                    openModal('install-modal');
+                }
+            } else {
+                alert("رمز غير صحيح");
+            }
+        };
+
+        if (localStorage.getItem('isLoggedIn') === 'true') {
+            document.getElementById('login-modal').style.display = 'none';
+            if(!localStorage.getItem('inventory') && navigator.onLine) {
+                window.syncDataFromFirebase();
+            } else {
+                window.syncDataToFirebase();
+            }
+        }
+
+        window.addEventListener('online', () => {
+            if (window.syncDataToFirebase && document.getElementById('login-modal').style.display === 'none') {
+                window.syncDataToFirebase();
+            }
+        });
+    </script>
+    <script src="app.js"></script>
+</body>
+</html>
