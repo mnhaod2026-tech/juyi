@@ -43,24 +43,31 @@ function updateDatalist() {
 }
 
 // ----------------- إدارة المخزون -----------------
-function renderInventory() {
+function renderInventory(filter = '') {
     const list = document.getElementById('inventory-list');
     list.innerHTML = '';
     inventory.forEach((item, index) => {
-        list.innerHTML += `
-            <div class="card" onclick="openItemStats(${index})" style="cursor: pointer;">
-                <div class="card-info">
-                    <h4>${item.name}</h4>
-                    <p>الكمية: <strong>${item.qty}</strong> | السعر: ${item.sellPrice} د.ع</p>
+        if(item.name.startsWith(filter) || filter === '') {
+            list.innerHTML += `
+                <div class="card" onclick="openItemStats(${index})" style="cursor: pointer;">
+                    <div class="card-info">
+                        <h4>${index + 1} - ${item.name}</h4>
+                        <p>الكمية: <strong>${item.qty}</strong> | السعر: ${item.sellPrice} د.ع</p>
+                    </div>
+                    <div class="card-actions" onclick="event.stopPropagation()">
+                        <button class="btn-secondary" onclick="editItem(${index})"><i class="fas fa-pen"></i></button>
+                        <button class="btn-danger" onclick="deleteItem(${index})"><i class="fas fa-trash"></i></button>
+                    </div>
                 </div>
-                <div class="card-actions" onclick="event.stopPropagation()">
-                    <button class="btn-secondary" onclick="editItem(${index})"><i class="fas fa-pen"></i></button>
-                    <button class="btn-danger" onclick="deleteItem(${index})"><i class="fas fa-trash"></i></button>
-                </div>
-            </div>
-        `;
+            `;
+        }
     });
     updateDatalist();
+}
+
+function searchInventory() {
+    const term = document.getElementById('search-inventory').value;
+    renderInventory(term);
 }
 
 function openItemStats(index) {
@@ -141,19 +148,21 @@ function deleteItem(index) {
 function renderCustomers(filter = '') {
     const list = document.getElementById('customers-list');
     list.innerHTML = '';
-    customers.filter(c => c.name.includes(filter)).forEach((cust, index) => {
-        list.innerHTML += `
-            <div class="card" onclick="openCustomerDetails(${index})">
-                <div class="card-info">
-                    <h4>${cust.name}</h4>
-                    <p>+964${cust.phone} | الأيام: ${cust.days || 30}</p>
+    customers.forEach((cust, index) => {
+        if(cust.name.includes(filter) || filter === '') {
+            list.innerHTML += `
+                <div class="card" onclick="openCustomerDetails(${index})">
+                    <div class="card-info">
+                        <h4>${index + 1} - ${cust.name}</h4>
+                        <p>+964${cust.phone} | الأيام: ${cust.days || 30}</p>
+                    </div>
+                    <div class="card-actions" onclick="event.stopPropagation()">
+                        <button class="btn-secondary" onclick="editCustomer(${index})"><i class="fas fa-pen"></i></button>
+                        <button class="btn-danger" onclick="deleteCustomer(${index})"><i class="fas fa-trash"></i></button>
+                    </div>
                 </div>
-                <div class="card-actions" onclick="event.stopPropagation()">
-                    <button class="btn-secondary" onclick="editCustomer(${index})"><i class="fas fa-pen"></i></button>
-                    <button class="btn-danger" onclick="deleteCustomer(${index})"><i class="fas fa-trash"></i></button>
-                </div>
-            </div>
-        `;
+            `;
+        }
     });
 }
 
