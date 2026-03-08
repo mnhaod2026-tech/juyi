@@ -1,8 +1,19 @@
+// app.js
 // التهيئة وقواعد البيانات المحلية
-let inventory = JSON.parse(localStorage.getItem('inventory')) || [];
-let customers = JSON.parse(localStorage.getItem('customers')) || [];
-let directSales = JSON.parse(localStorage.getItem('directSales')) || [];
-let currentCustomerIndex = -1; 
+var inventory = JSON.parse(localStorage.getItem('inventory')) || [];
+var customers = JSON.parse(localStorage.getItem('customers')) || [];
+var directSales = JSON.parse(localStorage.getItem('directSales')) || [];
+var currentCustomerIndex = -1; 
+
+window.updateLocalData = function(newInv, newCust, newSales, newStats) {
+    if (newInv) inventory = newInv;
+    if (newCust) customers = newCust;
+    if (newSales) directSales = newSales;
+    renderInventory();
+    renderCustomers();
+    renderSales();
+    renderStatistics();
+};
 
 function triggerSync() {
     if(window.syncDataToFirebase) window.syncDataToFirebase();
