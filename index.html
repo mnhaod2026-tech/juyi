@@ -232,7 +232,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-app.js";
         import { getAuth, signInWithPopup, onAuthStateChanged, GoogleAuthProvider } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-auth.js";
-        import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-firestore.js";
+        import { getFirestore, doc, setDoc, getDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyCtJzxF5pnml9WQPiuykHJfR3ALlX9fjgs",
@@ -262,18 +262,40 @@
             }
         };
 
-        window.syncDataFromFirebase = async () => {
+        window.syncDataFromFirebase = () => {
             if(navigator.onLine) {
                 try {
-                    const docSnap = await getDoc(doc(db, "appData", "main"));
-                    if (docSnap.exists()) {
-                        const data = docSnap.data();
-                        if(data.inventory && data.inventory.length > 0) localStorage.setItem('inventory', JSON.stringify(data.inventory));
-                        if(data.customers && data.customers.length > 0) localStorage.setItem('customers', JSON.stringify(data.customers));
-                        if(data.directSales && data.directSales.length > 0) localStorage.setItem('directSales', JSON.stringify(data.directSales));
-                        if(data.statistics && data.statistics.length > 0) localStorage.setItem('statistics', JSON.stringify(data.statistics));
-                        window.location.reload();
-                    }
+                    onSnapshot(doc(db, "appData", "main"), (docSnap) => {
+                        if (docSnap.exists()) {
+                            const data = docSnap.data();
+                            let needsUpdate = false;
+                            
+                            if(data.inventory && JSON.stringify(data.inventory) !== localStorage.getItem('inventory')) {
+                                localStorage.setItem('inventory', JSON.stringify(data.inventory));
+                                needsUpdate = true;
+                            }
+                            if(data.customers && JSON.stringify(data.customers) !== localStorage.getItem('customers')) {
+                                localStorage.setItem('customers', JSON.stringify(data.customers));
+                                needsUpdate = true;
+                            }
+                            if(data.directSales && JSON.stringify(data.directSales) !== localStorage.getItem('directSales')) {
+                                localStorage.setItem('directSales', JSON.stringify(data.directSales));
+                                needsUpdate = true;
+                            }
+                            if(data.statistics && JSON.stringify(data.statistics) !== localStorage.getItem('statistics')) {
+                                localStorage.setItem('statistics', JSON.stringify(data.statistics));
+                                needsUpdate = true;
+                            }
+                            
+                            if (needsUpdate) {
+                                if (window.updateLocalData) {
+                                    window.updateLocalData(data.inventory, data.customers, data.directSales, data.statistics);
+                                } else {
+                                    window.location.reload();
+                                }
+                            }
+                        }
+                    });
                 } catch(e) { console.error("Error fetching:", e); }
             }
         };
@@ -299,7 +321,7 @@
                 localStorage.setItem('isLoggedIn', 'true');
                 document.getElementById('login-modal').style.display = 'none';
                 
-                if(!localStorage.getItem('inventory') && navigator.onLine) {
+                if(navigator.onLine) {
                     window.syncDataFromFirebase();
                 } else {
                     window.syncDataToFirebase();
@@ -315,7 +337,7 @@
 
         if (localStorage.getItem('isLoggedIn') === 'true') {
             document.getElementById('login-modal').style.display = 'none';
-            if(!localStorage.getItem('inventory') && navigator.onLine) {
+            if(navigator.onLine) {
                 window.syncDataFromFirebase();
             } else {
                 window.syncDataToFirebase();
