@@ -68,7 +68,7 @@
 
         <section id="tab-settings" class="tab-content">
             <div class="settings-container">
-                <button class="btn-primary" onclick="window.syncDataToFirebase(); alert('تم نقل جميع البيانات للقاعدة بنجاح!');" style="width: 100%; margin-bottom: 10px;"><i class="fas fa-cloud-upload-alt"></i> نقل جميع البيانات للقاعدة</button>
+                <button class="btn-primary" onclick="window.syncDataToFirebase(); alert('تم محاولة المزامنة مع القاعدة!');" style="width: 100%; margin-bottom: 10px;"><i class="fas fa-cloud-upload-alt"></i> نقل جميع البيانات للقاعدة</button>
                 <button class="btn-secondary" onclick="exportData()"><i class="fas fa-download"></i> تنزيل نسخة احتياطية</button>
                 <label class="btn-secondary file-upload">
                     <i class="fas fa-upload"></i> رفع نسخة احتياطية
@@ -303,14 +303,46 @@
                     
                     if (docSnap.exists()) {
                         const remoteData = docSnap.data();
-                        const remoteCount = (remoteData.inventory ? remoteData.inventory.length : 0) + 
-                                            (remoteData.customers ? remoteData.customers.length : 0) + 
-                                            (remoteData.directSales ? remoteData.directSales.length : 0);
-                        const localCount = inv.length + cust.length + sales.length;
                         
-                        if (remoteCount > localCount) {
-                            console.log("البيانات في القاعدة أكثر من المحلي، تم إلغاء الرفع لتجنب فقدان البيانات.");
-                            return;
+                        let remoteInv = remoteData.inventory || [];
+                        inv.forEach(localItem => {
+                            let idx = remoteInv.findIndex(r => r.name === localItem.name);
+                            if(idx === -1) remoteInv.push(localItem);
+                            else remoteInv[idx] = localItem;
+                        });
+                        inv = remoteInv;
+
+                        let remoteCust = remoteData.customers || [];
+                        cust.forEach(localCust => {
+                            let idx = remoteCust.findIndex(r => r.name === localCust.name);
+                            if(idx === -1) remoteCust.push(localCust);
+                            else remoteCust[idx] = localCust;
+                        });
+                        cust = remoteCust;
+
+                        let remoteSales = remoteData.directSales || [];
+                        sales.forEach(localSale => {
+                            if(!remoteSales.find(r => r.timestamp === localSale.timestamp)) {
+                                remoteSales.push(localSale);
+                            }
+                        });
+                        sales = remoteSales;
+
+                        let remoteStats = remoteData.statistics || [];
+                        stats.forEach(localStat => {
+                            if(!remoteStats.find(r => r.timestamp === localStat.timestamp)) {
+                                remoteStats.push(localStat);
+                            }
+                        });
+                        stats = remoteStats;
+
+                        localStorage.setItem('inventory', JSON.stringify(inv));
+                        localStorage.setItem('customers', JSON.stringify(cust));
+                        localStorage.setItem('directSales', JSON.stringify(sales));
+                        localStorage.setItem('statistics', JSON.stringify(stats));
+                        
+                        if (window.updateLocalData) {
+                            window.updateLocalData(inv, cust, sales, stats);
                         }
                     }
 
