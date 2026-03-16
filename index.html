@@ -233,6 +233,25 @@
         </div>
     </div>
 
+    <div id="update-modal" class="modal" style="z-index: 10000;">
+        <div class="modal-content" style="text-align: center;">
+            <h3 style="margin-bottom: 15px; color: var(--accent-color);">تحديث جديد متوفر!</h3>
+            <p style="margin-bottom: 20px;">تم إطلاق نسخة جديدة. يرجى التحديث للحصول على أحدث الميزات.</p>
+            
+            <div id="update-actions" class="modal-actions">
+                <button class="btn-success" onclick="window.startUpdate()">تحديث</button>
+                <button class="btn-danger" onclick="closeModal('update-modal')">لاحقاً</button>
+            </div>
+
+            <div id="update-progress-container" style="display: none; margin-top: 20px;">
+                <p style="margin-bottom: 10px; font-weight: bold; color: var(--accent-color);">جارِ التحديث...</p>
+                <div class="progress-bar-3d">
+                    <div class="progress-bar-fill"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-app.js";
         import { getAuth, signInWithPopup, onAuthStateChanged, GoogleAuthProvider } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-auth.js";
