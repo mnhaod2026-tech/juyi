@@ -252,6 +252,20 @@
         </div>
     </div>
 
+    <div id="modal-partial-return" class="modal full-modal">
+        <div class="modal-content full-content">
+            <div class="top-actions">
+                <button class="btn-danger" onclick="closeModal('modal-partial-return')"><i class="fas fa-arrow-right"></i> رجوع</button>
+            </div>
+            <h3>استرجاع مواد (تعديل)</h3>
+            <div id="partial-return-items-container" class="list-container">
+            </div>
+            <div class="modal-actions">
+                <button class="btn-success" onclick="confirmPartialReturn()">تأكيد الاسترجاع</button>
+            </div>
+        </div>
+    </div>
+
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-app.js";
         import { getAuth, signInWithPopup, onAuthStateChanged, GoogleAuthProvider } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-auth.js";
@@ -284,13 +298,29 @@
                     sales = sales.filter(item => item !== null);
                     stats = stats.filter(item => item !== null);
 
+                    const docRef = doc(db, "appData", "main");
+                    const docSnap = await getDoc(docRef);
+                    
+                    if (docSnap.exists()) {
+                        const remoteData = docSnap.data();
+                        const remoteCount = (remoteData.inventory ? remoteData.inventory.length : 0) + 
+                                            (remoteData.customers ? remoteData.customers.length : 0) + 
+                                            (remoteData.directSales ? remoteData.directSales.length : 0);
+                        const localCount = inv.length + cust.length + sales.length;
+                        
+                        if (remoteCount > localCount) {
+                            console.log("البيانات في القاعدة أكثر من المحلي، تم إلغاء الرفع لتجنب فقدان البيانات.");
+                            return;
+                        }
+                    }
+
                     const dataToSync = {
                         inventory: inv,
                         customers: cust,
                         directSales: sales,
                         statistics: stats
                     };
-                    await setDoc(doc(db, "appData", "main"), dataToSync);
+                    await setDoc(docRef, dataToSync);
                 } catch(e) { console.error("Error syncing:", e); }
             }
         };
