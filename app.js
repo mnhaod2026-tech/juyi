@@ -16,7 +16,13 @@ window.updateLocalData = function(newInv, newCust, newSales, newStats) {
 };
 
 function triggerSync() {
-    if(window.syncDataToFirebase) window.syncDataToFirebase();
+    try {
+        if(window.syncDataToFirebase) {
+            setTimeout(() => {
+                if(navigator.onLine) window.syncDataToFirebase(false);
+            }, 100);
+        }
+    } catch(e) { console.error('Offline mode saved locally'); }
 }
 
 // دالة التبديل بين التبويبات
@@ -36,19 +42,20 @@ function switchTab(tabId, element) {
 
 function updateDatalist() {
     const dl = document.getElementById('inventory-options');
-    dl.innerHTML = '';
+    let html = [];
     inventory.forEach(item => {
-        dl.innerHTML += `<option value="${item.name}">الكمية المتاحة: ${item.qty}</option>`;
+        html.push(`<option value="${item.name}">الكمية المتاحة: ${item.qty}</option>`);
     });
+    dl.innerHTML = html.join('');
 }
 
 // ----------------- إدارة المخزون -----------------
 function renderInventory(filter = '') {
     const list = document.getElementById('inventory-list');
-    list.innerHTML = '';
+    let html = [];
     inventory.forEach((item, index) => {
         if(item.name.startsWith(filter) || filter === '') {
-            list.innerHTML += `
+            html.push(`
                 <div class="card" onclick="openItemStats(${index})" style="cursor: pointer;">
                     <div class="card-info">
                         <h4>${index + 1} - ${item.name}</h4>
@@ -59,9 +66,10 @@ function renderInventory(filter = '') {
                         <button class="btn-danger" onclick="deleteItem(${index})"><i class="fas fa-trash"></i></button>
                     </div>
                 </div>
-            `;
+            `);
         }
     });
+    list.innerHTML = html.join('');
     updateDatalist();
 }
 
@@ -147,23 +155,25 @@ function deleteItem(index) {
 // ----------------- إدارة الزبائن -----------------
 function renderCustomers(filter = '') {
     const list = document.getElementById('customers-list');
-    list.innerHTML = '';
+    let html = [];
     customers.forEach((cust, index) => {
         if(cust.name.includes(filter) || filter === '') {
-            list.innerHTML += `
+            html.push(`
                 <div class="card" onclick="openCustomerDetails(${index})">
                     <div class="card-info">
                         <h4>${index + 1} - ${cust.name}</h4>
                         <p>+964${cust.phone} | الأيام: ${cust.days || 30}</p>
+                        ${cust.notes ? `<p style="font-size:0.8rem; color:#888;">ملاحظات: ${cust.notes}</p>` : ''}
                     </div>
                     <div class="card-actions" onclick="event.stopPropagation()">
                         <button class="btn-secondary" onclick="editCustomer(${index})"><i class="fas fa-pen"></i></button>
                         <button class="btn-danger" onclick="deleteCustomer(${index})"><i class="fas fa-trash"></i></button>
                     </div>
                 </div>
-            `;
+            `);
         }
     });
+    list.innerHTML = html.join('');
 }
 
 function searchCustomers() {
@@ -176,6 +186,7 @@ function saveCustomer() {
     const name = document.getElementById('cust-name').value;
     let phone = document.getElementById('cust-phone').value;
     const address = document.getElementById('cust-address').value;
+    const notes = document.getElementById('cust-notes').value;
     const days = document.getElementById('cust-days').value || 30;
 
     if (!name || !phone) return alert('الرجاء إدخال الاسم والرقم');
@@ -185,6 +196,7 @@ function saveCustomer() {
         name, 
         phone, 
         address, 
+        notes,
         balance: 0, 
         days: parseInt(days), 
         transactions: [], 
@@ -209,6 +221,7 @@ function saveCustomer() {
     document.getElementById('cust-name').value = '';
     document.getElementById('cust-phone').value = '';
     document.getElementById('cust-address').value = '';
+    document.getElementById('cust-notes').value = '';
     document.getElementById('cust-days').value = '';
 }
 
@@ -218,6 +231,7 @@ function editCustomer(index) {
     document.getElementById('cust-name').value = cust.name;
     document.getElementById('cust-phone').value = cust.phone;
     document.getElementById('cust-address').value = cust.address;
+    document.getElementById('cust-notes').value = cust.notes || '';
     document.getElementById('cust-days').value = cust.days || 30;
     openModal('modal-add-customer');
 }
@@ -236,39 +250,88 @@ function openCustomerDetails(index) {
     const cust = customers[index];
     document.getElementById('detail-cust-name').innerText = cust.name;
     document.getElementById('detail-cust-balance').innerText = cust.balance;
+    document.getElementById('detail-cust-notes').innerText = cust.notes ? "ملاحظات: " + cust.notes : "";
     
     const historyList = document.getElementById('customer-transactions-list');
-    historyList.innerHTML = '';
+    let html = [];
     
     if(!cust.transactions || cust.transactions.length === 0) {
-        historyList.innerHTML = '<p class="empty-msg" style="text-align:center;">لا توجد معاملات سابقة لهذا الزبون.</p>';
+        html.push('<p class="empty-msg" style="text-align:center;">لا توجد معاملات سابقة لهذا الزبون.</p>');
     } else {
         for (let i = cust.transactions.length - 1; i >= 0; i--) {
             let t = cust.transactions[i];
             let details = '';
+            let borderColor = '';
+            
             if(t.type === 'debt') {
-                details = `<strong style="color:var(--danger-color);">دين جديد:</strong> ${t.total} د.ع<br><small style="color:#555;">المواد: ${t.itemsText || t.items}</small>`;
-            } else {
+                let returnedText = t.isReturned ? '<span style="color:var(--danger-color); font-weight:bold;"> (مسترجعة)</span>' : '';
+                details = `<strong style="color:var(--danger-color);">دين جديد:</strong> ${t.total} د.ع ${returnedText}<br><small style="color:#555;">المواد: ${t.itemsText || t.items}</small>`;
+                borderColor = 'var(--danger-color)';
+            } else if(t.type === 'payment') {
                 details = `<strong style="color:var(--success-color);">تسديد (واصل):</strong> ${t.amount} د.ع<br><small style="color:#555;">ملاحظة: ${t.note}</small>`;
+                borderColor = 'var(--success-color)';
+            } else if(t.type === 'return') {
+                details = `<strong style="color:#34495e;">استرجاع مواد:</strong> ${t.amount} د.ع<br><small style="color:#555;">ملاحظة: ${t.note}</small>`;
+                borderColor = '#34495e';
             }
             
-            historyList.innerHTML += `
-                <div class="card" style="flex-direction: column; align-items: flex-start; margin-bottom:10px; border-right: 4px solid ${t.type === 'debt' ? 'var(--danger-color)' : 'var(--success-color)'};">
+            let returnBtn = (t.type === 'debt' && !t.isReturned) ? `<button class="btn-secondary" style="padding: 5px 10px; font-size: 0.8rem; margin-right: 5px;" onclick="returnCustomerDebt(${currentCustomerIndex}, ${i})"><i class="fas fa-undo"></i> استرجاع</button>` : '';
+
+            html.push(`
+                <div class="card" style="flex-direction: column; align-items: flex-start; margin-bottom:10px; border-right: 4px solid ${borderColor};">
                     <div style="width: 100%; display: flex; justify-content: space-between; border-bottom: 1px solid #eee; padding-bottom: 5px; margin-bottom: 5px;">
                         <span style="font-weight:bold; font-size:0.9rem;">${t.date}</span>
                         <span style="font-size:0.9rem;">الباقي: <strong>${t.remainingBalance}</strong> د.ع</span>
                     </div>
                     <div style="width: 100%;">
                         ${details}
-                        <div style="margin-top: 10px;">
+                        <div style="margin-top: 10px; display:flex; gap:5px;">
                             <button class="btn-success" style="padding: 5px 10px; font-size: 0.8rem;" onclick="shareTransaction(${currentCustomerIndex}, ${i})"><i class="fab fa-whatsapp"></i> مشاركة</button>
+                            ${returnBtn}
                         </div>
                     </div>
                 </div>
-            `;
+            `);
         }
     }
+    historyList.innerHTML = html.join('');
     openModal('modal-customer-details');
+}
+
+function returnCustomerDebt(custIndex, transIndex) {
+    if(!confirm('هل تريد استرجاع مواد هذه القائمة للمخزون وإلغاء قيمتها من الدين؟')) return;
+    const cust = customers[custIndex];
+    const t = cust.transactions[transIndex];
+    
+    if (t.isReturned) {
+        alert('تم استرجاع هذه القائمة مسبقاً');
+        return;
+    }
+
+    if(t.items && Array.isArray(t.items)) {
+        t.items.forEach(item => {
+            let invItem = inventory.find(i => i.name === item.name);
+            if(invItem) invItem.qty = parseFloat(invItem.qty) + parseFloat(item.qty);
+        });
+    }
+    
+    cust.balance = parseFloat(cust.balance) - parseFloat(t.total);
+    t.isReturned = true;
+    
+    cust.transactions.push({
+        type: 'return',
+        date: new Date().toLocaleDateString('ar-IQ') + ' ' + new Date().toLocaleTimeString('ar-IQ'),
+        amount: t.total,
+        note: 'استرجاع قائمة دين بتاريخ ' + t.date,
+        remainingBalance: cust.balance
+    });
+
+    localStorage.setItem('customers', JSON.stringify(customers));
+    localStorage.setItem('inventory', JSON.stringify(inventory));
+    triggerSync();
+    renderCustomers();
+    openCustomerDetails(custIndex);
+    alert('تم الاسترجاع بنجاح');
 }
 
 function shareTransaction(custIndex, transIndex) {
@@ -277,8 +340,10 @@ function shareTransaction(custIndex, transIndex) {
     let text = '';
     if(t.type === 'debt') {
         text = `قائمة دين جديد%0Aالاسم: ${cust.name}%0Aالتاريخ: ${t.date}%0Aالمواد: ${t.itemsText || t.items}%0Aالمبلغ: ${t.total} د.ع%0Aالباقي الحالي: ${t.remainingBalance} د.ع`;
-    } else {
+    } else if(t.type === 'payment') {
         text = `وصل تسديد%0Aالاسم: ${cust.name}%0Aالتاريخ: ${t.date}%0Aالمبلغ المسدد (واصل): ${t.amount} د.ع%0Aملاحظة: ${t.note}%0Aالباقي الحالي: ${t.remainingBalance} د.ع`;
+    } else if(t.type === 'return') {
+        text = `وصل استرجاع مواد%0Aالاسم: ${cust.name}%0Aالتاريخ: ${t.date}%0Aقيمة المسترجع: ${t.amount} د.ع%0Aالباقي الحالي: ${t.remainingBalance} د.ع`;
     }
     window.open(`https://wa.me/964${cust.phone}?text=${text}`, '_blank');
 }
@@ -384,7 +449,8 @@ function saveDirectSale() {
         profit: totalProfit,
         items: saleItems,
         date: new Date().toLocaleDateString('ar-IQ'),
-        timestamp: new Date().getTime()
+        timestamp: new Date().getTime(),
+        isReturned: false
     };
     
     directSales.push(saleRecord);
@@ -413,29 +479,58 @@ function saveDirectSale() {
 
 function renderSales() {
     const list = document.getElementById('sales-list');
-    list.innerHTML = '';
+    let html = [];
     if(directSales.length === 0) {
         list.innerHTML = '<p class="empty-msg">لا توجد مبيعات مباشرة حتى الآن.</p>';
         return;
     }
     directSales.slice().reverse().forEach((sale, reversedIndex) => {
         let originalIndex = directSales.length - 1 - reversedIndex;
-        list.innerHTML += `
-            <div class="card" style="flex-direction: column; align-items: flex-start;">
+        let returnedText = sale.isReturned ? '<span style="color:var(--danger-color); font-weight:bold;"> (مسترجعة)</span>' : '';
+        html.push(`
+            <div class="card" style="flex-direction: column; align-items: flex-start; ${sale.isReturned ? 'opacity: 0.7;' : ''}">
                 <div style="width: 100%; display: flex; justify-content: space-between; margin-bottom: 10px;">
                     <h4 style="color:var(--primary-color);">${sale.name} ${sale.phone ? ' - ' + sale.phone : ''}</h4>
                     <span>${sale.date}</span>
                 </div>
                 <div style="width: 100%; margin-bottom: 10px;">
-                    <p>الإجمالي: <strong>${sale.total}</strong> د.ع</p>
+                    <p>الإجمالي: <strong>${sale.total}</strong> د.ع ${returnedText}</p>
                 </div>
-                <div style="width: 100%; display: flex; gap: 5px;">
+                <div style="width: 100%; display: flex; gap: 5px; flex-wrap: wrap;">
                     <button class="btn-success" onclick="shareDirectSale(${originalIndex})"><i class="fab fa-whatsapp"></i> مشاركة القائمة</button>
+                    ${!sale.isReturned ? `<button class="btn-secondary" onclick="returnDirectSale(${originalIndex})"><i class="fas fa-undo"></i> استرجاع</button>` : ''}
                     <button class="btn-danger" onclick="deleteDirectSale(${originalIndex})"><i class="fas fa-trash"></i> حذف</button>
                 </div>
             </div>
-        `;
+        `);
     });
+    list.innerHTML = html.join('');
+}
+
+function returnDirectSale(index) {
+    if(!confirm('هل تريد استرجاع مواد هذه الفاتورة للمخزون وإلغائها؟')) return;
+    const sale = directSales[index];
+    
+    if (sale.isReturned) {
+        alert('تم استرجاع هذه الفاتورة مسبقاً');
+        return;
+    }
+
+    if(sale.items && Array.isArray(sale.items)) {
+        sale.items.forEach(item => {
+            let invItem = inventory.find(i => i.name === item.name);
+            if(invItem) invItem.qty = parseFloat(invItem.qty) + parseFloat(item.qty);
+        });
+    }
+    
+    sale.isReturned = true; 
+    
+    localStorage.setItem('directSales', JSON.stringify(directSales));
+    localStorage.setItem('inventory', JSON.stringify(inventory));
+    triggerSync();
+    renderSales();
+    renderInventory();
+    alert('تم الاسترجاع بنجاح');
 }
 
 function shareDirectSale(index) {
@@ -524,7 +619,8 @@ function saveDebt() {
         profit: totalProfit,
         itemsText: itemsForHistory.join(' ، '),
         items: itemsForStats,
-        remainingBalance: customers[currentCustomerIndex].balance
+        remainingBalance: customers[currentCustomerIndex].balance,
+        isReturned: false
     });
     customers[currentCustomerIndex].lastDebtDate = new Date().getTime();
 
@@ -610,7 +706,7 @@ function renderStatistics() {
     document.getElementById('stat-inv-sell').innerText = inventorySell;
 
     const list = document.getElementById('statistics-list');
-    list.innerHTML = '';
+    let html = [];
     
     for(let m = 1; m <= 12; m++) {
         let mSales = 0;
@@ -625,7 +721,7 @@ function renderStatistics() {
             }
         });
         
-        list.innerHTML += `
+        html.push(`
             <div class="card">
                 <div class="card-info" style="width: 100%;">
                     <h4 style="border-bottom: 1px solid #eee; padding-bottom: 5px; margin-bottom: 5px;">شهر ${m} (${currentYear})</h4>
@@ -635,14 +731,15 @@ function renderStatistics() {
                     </p>
                 </div>
             </div>
-        `;
+        `);
     }
+    list.innerHTML = html.join('');
 }
 
 // ----------------- التنبيهات -----------------
 function renderNotifications() {
     const list = document.getElementById('notifications-list');
-    list.innerHTML = '';
+    let html = [];
     const now = new Date().getTime();
     let hasAlerts = false;
     
@@ -651,7 +748,7 @@ function renderNotifications() {
             const daysPassed = (now - cust.lastDebtDate) / (1000 * 60 * 60 * 24);
             if(daysPassed > cust.days) {
                 hasAlerts = true;
-                list.innerHTML += `
+                html.push(`
                     <div class="card" style="border-right: 5px solid var(--danger-color);">
                         <div class="card-info">
                             <h4 style="color:var(--danger-color);"><i class="fas fa-exclamation-triangle"></i> ${cust.name}</h4>
@@ -661,13 +758,15 @@ function renderNotifications() {
                             <button class="btn-primary" onclick="openCustomerDetails(${index})">عرض التفاصيل</button>
                         </div>
                     </div>
-                `;
+                `);
             }
         }
     });
     
     if(!hasAlerts) {
         list.innerHTML = '<p class="empty-msg">لا توجد تنبيهات لزبائن متأخرين عن السداد حالياً.</p>';
+    } else {
+        list.innerHTML = html.join('');
     }
 }
 
