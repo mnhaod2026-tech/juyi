@@ -68,14 +68,8 @@
 
         <section id="tab-settings" class="tab-content">
             <div class="settings-container">
-                <button class="btn-danger" onclick="alert('لإرجاع المواد والديون: \n1- إذا كان لديك إنترنت، اضغط على (استرجاع البيانات من القاعدة).\n2- إذا لم ترجع، فهذا يعني أنك فتحت هذا الملف الجديد من مجلد مختلف عن المجلد الذي فيه الملف القديم. \n* الحل: اذهب للملف القديم في حاسبتك، افتحه، اذهب للإعدادات واضغط (تنزيل نسخة احتياطية)، ثم ارجع لهذا الملف الجديد واضغط (رفع نسخة احتياطية).')" style="width: 100%; margin-bottom: 15px; font-weight: bold; background: #c0392b;"><i class="fas fa-question-circle"></i> كيف أرجع المواد والديون المحذوفة؟ (هام)</button>
-                
-                <button class="btn-success" onclick="window.syncDataFromFirebase(); alert('جاري محاولة سحب البيانات من القاعدة...');" style="width: 100%; margin-bottom: 10px;"><i class="fas fa-cloud-download-alt"></i> استرجاع البيانات من القاعدة</button>
-
-                <button class="btn-primary" onclick="window.syncDataToFirebase(true); alert('تم نقل جميع البيانات للقاعدة بنجاح!');" style="width: 100%; margin-bottom: 10px;"><i class="fas fa-cloud-upload-alt"></i> نقل جميع البيانات للقاعدة</button>
-                
+                <button class="btn-primary" onclick="window.syncDataToFirebase(); alert('تم نقل جميع البيانات للقاعدة بنجاح!');" style="width: 100%; margin-bottom: 10px;"><i class="fas fa-cloud-upload-alt"></i> نقل جميع البيانات للقاعدة</button>
                 <button class="btn-secondary" onclick="exportData()"><i class="fas fa-download"></i> تنزيل نسخة احتياطية</button>
-                
                 <label class="btn-secondary file-upload">
                     <i class="fas fa-upload"></i> رفع نسخة احتياطية
                     <input type="file" id="import-file" accept=".json" onchange="importData(event)" style="display: none;">
@@ -258,7 +252,7 @@
         const provider = new GoogleAuthProvider();
         const db = getFirestore(app);
 
-        window.syncDataToFirebase = async (forceSync = false) => {
+        window.syncDataToFirebase = async () => {
             if(navigator.onLine) {
                 try {
                     let inv = JSON.parse(localStorage.getItem('inventory')) || [];
@@ -266,10 +260,6 @@
                     let sales = JSON.parse(localStorage.getItem('directSales')) || [];
                     let stats = JSON.parse(localStorage.getItem('statistics')) || [];
                     
-                    if (!forceSync && inv.length === 0 && cust.length === 0 && sales.length === 0) {
-                        return; // منع مسح بيانات القاعدة إذا كان التطبيق فارغاً عن طريق الخطأ
-                    }
-
                     inv = inv.filter(item => item !== null);
                     cust = cust.filter(item => item !== null);
                     sales = sales.filter(item => item !== null);
@@ -294,31 +284,26 @@
                             const data = docSnap.data();
                             let needsUpdate = false;
                             
-                            if(data.inventory && data.inventory.length > 0 && JSON.stringify(data.inventory) !== localStorage.getItem('inventory')) {
+                            if(data.inventory && JSON.stringify(data.inventory) !== localStorage.getItem('inventory')) {
                                 localStorage.setItem('inventory', JSON.stringify(data.inventory));
                                 needsUpdate = true;
                             }
-                            if(data.customers && data.customers.length > 0 && JSON.stringify(data.customers) !== localStorage.getItem('customers')) {
+                            if(data.customers && JSON.stringify(data.customers) !== localStorage.getItem('customers')) {
                                 localStorage.setItem('customers', JSON.stringify(data.customers));
                                 needsUpdate = true;
                             }
-                            if(data.directSales && data.directSales.length > 0 && JSON.stringify(data.directSales) !== localStorage.getItem('directSales')) {
+                            if(data.directSales && JSON.stringify(data.directSales) !== localStorage.getItem('directSales')) {
                                 localStorage.setItem('directSales', JSON.stringify(data.directSales));
                                 needsUpdate = true;
                             }
-                            if(data.statistics && data.statistics.length > 0 && JSON.stringify(data.statistics) !== localStorage.getItem('statistics')) {
+                            if(data.statistics && JSON.stringify(data.statistics) !== localStorage.getItem('statistics')) {
                                 localStorage.setItem('statistics', JSON.stringify(data.statistics));
                                 needsUpdate = true;
                             }
                             
                             if (needsUpdate) {
                                 if (window.updateLocalData) {
-                                    window.updateLocalData(
-                                        JSON.parse(localStorage.getItem('inventory')), 
-                                        JSON.parse(localStorage.getItem('customers')), 
-                                        JSON.parse(localStorage.getItem('directSales')), 
-                                        JSON.parse(localStorage.getItem('statistics'))
-                                    );
+                                    window.updateLocalData(data.inventory, data.customers, data.directSales, data.statistics);
                                 } else {
                                     window.location.reload();
                                 }
@@ -352,6 +337,8 @@
                 
                 if(navigator.onLine) {
                     window.syncDataFromFirebase();
+                } else {
+                    window.syncDataToFirebase();
                 }
 
                 if (window.deferredPrompt) {
@@ -366,12 +353,14 @@
             document.getElementById('login-modal').style.display = 'none';
             if(navigator.onLine) {
                 window.syncDataFromFirebase();
+            } else {
+                if(window.syncDataToFirebase) window.syncDataToFirebase();
             }
         }
 
         window.addEventListener('online', () => {
             if (window.syncDataToFirebase && document.getElementById('login-modal').style.display === 'none') {
-                window.syncDataToFirebase(false);
+                window.syncDataToFirebase();
             }
         });
     </script>
