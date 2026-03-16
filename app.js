@@ -836,8 +836,39 @@ window.installApp = async () => {
     }
 };
 
+let newWorker;
+
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-        navigator.serviceWorker.register('sw.js').catch(err => console.log('SW registration failed:', err));
+        navigator.serviceWorker.register('sw.js').then(reg => {
+            reg.addEventListener('updatefound', () => {
+                newWorker = reg.installing;
+                newWorker.addEventListener('statechange', () => {
+                    if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                        openModal('update-modal');
+                    }
+                });
+            });
+        }).catch(err => console.log('SW registration failed:', err));
+        
+        let refreshing;
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+            if (refreshing) return;
+            refreshing = true;
+            window.location.reload();
+        });
     });
+}
+
+window.startUpdate = function() {
+    document.getElementById('update-actions').style.display = 'none';
+    document.getElementById('update-progress-container').style.display = 'block';
+    
+    setTimeout(() => {
+        if (newWorker) {
+            newWorker.postMessage({ type: 'SKIP_WAITING' });
+        } else {
+            window.location.reload(true);
+        }
+    }, 2500); 
 }
